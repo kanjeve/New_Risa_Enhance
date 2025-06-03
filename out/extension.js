@@ -71,8 +71,6 @@ async function updateStatusBarMode(context) {
         }
     }
 }
-// 権利表記の非表示
-const ASIR_BOOT_MESSAGE_REGEX = /^This is Risa\/Asir,.*?GC \d+\.\d+\.\d+ copyright.*?[\r\n]+/s;
 // メインの関数
 function activate(context) {
     console.log('Congratulations, your extension "risa-enhancers" is now active!');
@@ -174,7 +172,7 @@ function activate(context) {
                 else {
                     // Windows上でWindowsネイティブのRisa/Asirを実行する場合
                     const asirPathWindows = config.get('asirPathWindows');
-                    command = `"${asirPathWindows || 'asir.exe'}"`;
+                    command = `"${asirPathWindows || 'asir.exe'}" -quiet`;
                     args = [];
                     displayMessage = 'Executing Risa/Asir on Windows natively...';
                     spawnOptions.shell = true;
@@ -245,13 +243,15 @@ function activate(context) {
                     asirOutputChannel.appendLine(`Error from Risa/Asir: ${errorString}`);
                     // }
                 });
-                let finalErrorMessage = errorAccumulator;
-                // 特定の終了メッセージをフィルタリング
-                const quitMessage = "Calling the registered quit callbacks...done.\r\n"; // 末尾の改行も含む
-                if (finalErrorMessage.includes(quitMessage)) {
-                    finalErrorMessage = finalErrorMessage.replace(quitMessage, '').trim();
-                }
                 asirProcess.on('close', (code) => {
+                    currentAsirProcess = null;
+                    asirCancelStatusBarItem.hide();
+                    let finalErrorMessage = errorAccumulator;
+                    // 特定の終了メッセージをフィルタリング
+                    const quitMessage = /(Calling the registered quit callbacks\.\.\.done\.[\r\n]+)|(return to toplevel[\r\n]*)/g;
+                    if (finalErrorMessage.match(quitMessage)) {
+                        finalErrorMessage = finalErrorMessage.replace(quitMessage, '').trim();
+                    }
                     if (code !== 0) {
                         asirOutputChannel.appendLine(`--- Risa/Asir process exited with code ${code} (Error) ---`);
                         vscode.window.showErrorMessage(`Risa/Asir execution failed with code ${code}. Check 'Risa/Asir CLI Output' for details.`);
@@ -263,12 +263,8 @@ function activate(context) {
                     }
                     else {
                         asirOutputChannel.appendLine(`--- Risa/Asir execution finished successfully ---`);
-                        let filteredOutput = outputAccumulator;
-                        filteredOutput = filteredOutput.replace(ASIR_BOOT_MESSAGE_REGEX, '');
-                        createResultWebview(context, textToExecute, filteredOutput, finalErrorMessage);
                     }
-                    currentAsirProcess = null;
-                    asirCancelStatusBarItem.hide();
+                    createResultWebview(context, textToExecute, outputAccumulator, finalErrorMessage);
                 });
                 asirProcess.on('error', (err) => {
                     asirOutputChannel.appendLine(`Failed to start Risa/Asir process: ${err.message}`);
