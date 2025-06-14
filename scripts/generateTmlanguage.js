@@ -1,5 +1,6 @@
-import fs from 'fs'
-import path from 'path'
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url'; 
 
 
 const ASIR_KEYWORDS = [
@@ -9,14 +10,15 @@ const ASIR_KEYWORDS = [
     'end', 'quit', 'true','false',
 ];
 
-export const ASIR_BUILTIN_FUNCTIONS = [
+const ASIR_BUILTIN_FUNCTIONS = [
     'load', 'import', 'ctrl', 'cputime', 'append', 'gcd', 'list', 'matrix', 'print',
     'det', 'inv', 'sin', 'cos', 'tan', 'log', 'exp', 'sqrt', 'abs', 'floor', 'ceil',
     'round', 'eval', 'quote', 'map', 'reduce', 'length', 'typeof', 'char', 'size',
-    '@pi', '@e', 
+    '@pi', '@e',
 ];
 
-const __dirname = import.meta.dirname;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const tmLanguagePath = path.join(__dirname, '..', 'syntaxes', 'rr.tmLanguage.json');
 
 // 既存のtmLanguage.jsonを読み込む
