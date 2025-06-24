@@ -1,5 +1,3 @@
-// src/builtins.ts
-
 export const ASIR_KEYWORDS = [
     'if', 'while', 'for', 'return', 'break', 'continue', 'static', 'struct', 'do', 'else', 'extern',
     'def', 'endmodule', 'function', 'global', 'local', 'localif', 'module',

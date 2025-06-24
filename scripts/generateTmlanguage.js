@@ -15,33 +15,56 @@ try {
     tmLanguage = {
         "scopeName": "source.rr",
         "fileTypes": ["rr"],
-        "patterns": []
+        "patterns": [
+            { "include": "#comments" },
+            { "include": "#keywords" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            { "include": "#operators" },
+            { "include": "#built-in-functions" },
+            { "include": "#language-constants" },
+            { "include": "#types" },
+            { "include": "#punctuation" },
+            { "include": "#functions" },
+            { "include": "#variables" }
+        ],
+        "repository": {
+            "comments": { /* ... */ },
+            "strings": { /* ... */ },
+            "numbers": { /* ... */ },
+            "operators": { /* ... */ },
+            "language-constants": { /* ... */ },
+            "types": { /* ... */ },
+            "punctuation": { /* ... */ },
+            "keywords": { "patterns": [] },
+            "built-in-functions": { "patterns": [] },
+            "functions": { "patterns": [] }, 
+            "variables": { "patterns": [] }  
+        }
     };
 }
 
-// 既存のパターンを保持しつつ、キーワードと組み込み関数部分を更新
-// もしpatternsが配列でない場合や存在しない場合は初期化
-if (!Array.isArray(tmLanguage.patterns)) {
-    tmLanguage.patterns = [];
-}
+// キーワードを更新
+tmLanguage.repository.keywords = {
+    "patterns": [
+        {
+            "name": "keyword.control.rr",
+            "match": `\\b(${ASIR_KEYWORDS.join('|')})\\b`
+        }
+    ]
+};
 
-// 既存のキーワードと組み込み関数のパターンを削除（重複を避けるため）
-tmLanguage.patterns = tmLanguage.patterns.filter(p =>
-    !p.name || (!p.name.includes('keyword.control.rr') && !p.name.includes('support.function.builtin.rr'))
-);
+// 組み込み関数を更新
+const escapedBuiltinFunctions = ASIR_BUILTIN_FUNCTIONS.map(f => f.replace(/[@.]/g, '\\$&'));
+tmLanguage.repository['built-in-functions'] = { 
+    "patterns": [
+        {
+            "name": "support.function.builtin.rr",
+            "match": `\\b(${escapedBuiltinFunctions.join('|')})\\b`
+        }
+    ]
+};
 
-// キーワードのパターンを追加
-tmLanguage.patterns.push({
-    "name": "keyword.control.rr",
-    "match": `\\b(${ASIR_KEYWORDS.join('|')})\\b`
-});
-
-// 組み込み関数のパターン
-const escapedBuiltinFunctions = ASIR_BUILTIN_FUNCTIONS.map(f => f.replace(/[@.]/g, '\\$&')); // @や.をエスケープ
-tmLanguage.patterns.push({
-    "name": "support.function.builtin.rr",
-    "match": `\\b(${escapedBuiltinFunctions.join('|')})\\b`
-});
 
 fs.writeFileSync(tmLanguagePath, JSON.stringify(tmLanguage, null, 4), 'utf8');
 console.log('rr.tmLanguage.json updated successfully with data from builtins.ts!');

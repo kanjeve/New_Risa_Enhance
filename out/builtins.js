@@ -1,5 +1,4 @@
 "use strict";
-// src/builtins.ts
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ASIR_BUILTIN_FUNCTIONS = exports.ASIR_KEYWORDS = void 0;
 exports.ASIR_KEYWORDS = [
