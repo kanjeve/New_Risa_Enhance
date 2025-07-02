@@ -1,4 +1,12 @@
-.vscode/**
-.vscode-test/**
-.gitignore
-vsc-extension-quickstart.md
+**/*
+
+!dist/**
+!package.json
+!data/**
+!themes/** 
+!resources/**
+!snippets/**
+!syntaxes/**
+!CHANGELOG.md
+!README.md
+!language-configuration.json
