@@ -6,8 +6,9 @@ import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import { TextDecoder } from 'util'; 
 
 import { currentAsirTerminal } from './debugCommand';
-import { createResultWebview, getWebviewContent } from '../utils/webviewUtils'; 
+import { createResultWebview } from '../utils/webviewUtils'; 
 import { convertWindowsPathToWsl } from '../utils/helper';
+import { AsirSession } from '@kanji/openxmclient';
 
 // 通常実行中のRisa/Asirプロセスを保持する変数
 export let currentNormalExecuteProcess: ChildProcessWithoutNullStreams | null = null;
@@ -21,31 +22,56 @@ export let currentNormalExecuteProcess: ChildProcessWithoutNullStreams | null = 
  */
 export function registerExecuteCommand(
     context: vscode.ExtensionContext,
-    asirOutputChannel: vscode.OutputChannel
+    asirOutputChannel: vscode.OutputChannel,
+    getAsirSession: () => AsirSession | null
 ) {
     let disposableAsirExecute = vscode.commands.registerCommand('risa_enhancers.executeCode', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if(!editor) {
-                vscode.window.showInformationMessage('No active text editor to execute Risa/Asir code.');
-                return;
-            } 
+        const editor = vscode.window.activeTextEditor;
+        if(!editor) {
+            vscode.window.showInformationMessage('No active text editor to execute Risa/Asir code.');
+            return;
+        } 
     
-            const document = editor.document;
-            const selection = editor.selection;
-            const textToExecute = document.getText(selection.isEmpty ? undefined : selection);
+        const document = editor.document;
+        const selection = editor.selection;
+        const textToExecute = document.getText(selection.isEmpty ? undefined : selection);
     
-            if (textToExecute.trim().length === 0) {
-                vscode.window.showInformationMessage('No code selected or current line is empty.');
-                return;
+        if (textToExecute.trim().length === 0) {
+            vscode.window.showInformationMessage('No code selected or current line is empty.');
+            return;
+        }
+
+        // 実行モードの取得
+        const config = vscode.workspace.getConfiguration('risaasirExecutor', document.uri);
+        const session = getAsirSession();
+        const useSessionMode = config.get<boolean>('useSessionMode', false);
+        // デバッグセクションが起動中ならコードはデバッグターミナルへ
+        if (currentAsirTerminal) {
+            vscode.window.showInformationMessage('sending code to active Risa/Asir debug session.');
+            currentAsirTerminal.sendText(textToExecute);
+            currentAsirTerminal.show(true);
+            return;
+        }
+
+        if (useSessionMode && session) {
+            // 常駐型セッションでの実行
+            asirOutputChannel.clear();
+            asirOutputChannel.show(true);
+            asirOutputChannel.appendLine(`--- Executing in persistent Asir session ---`);
+            asirOutputChannel.appendLine(`> ${textToExecute}`);
+
+            try {
+                const result = await session.execute(textToExecute);
+                asirOutputChannel.appendLine(`[Session RESULT] ${result}`);
+                createResultWebview(context, textToExecute, result, '');
+            } catch (error: any) {
+                const errorMessage = error.message || 'An unknown error occurred.';
+                vscode.window.showErrorMessage(errorMessage);
+                asirOutputChannel.appendLine(`[Session ERROR] ${errorMessage}`);
+                createResultWebview(context, textToExecute, '', errorMessage);
             }
-            // デバッグセクションが起動中ならコードはデバッグターミナルへ
-            if (currentAsirTerminal) {
-                vscode.window.showInformationMessage('sending code to active Risa/Asir debug session.');
-                currentAsirTerminal.sendText(textToExecute);
-                currentAsirTerminal.show(true);
-                return;
-            }
-    
+        } else {
+            // 一回ごとの実行
             // 実行中の場合は中断を促す
             if (currentNormalExecuteProcess) {
                 vscode.window.showWarningMessage('A Risa/Asir execution is already running. Please cancel it first.', 'Cancel')
@@ -62,7 +88,6 @@ export function registerExecuteCommand(
             let displayMessage: string;
             let spawnOptions: { shell?: boolean; maxBuffer?: number } = {};
     
-            const config = vscode.workspace.getConfiguration('risaasirExecutor', document.uri);
             const currentOsPlatform = process.platform;
     
             let outputAccumulator = '';
@@ -232,6 +257,7 @@ export function registerExecuteCommand(
                 vscode.window.showErrorMessage(`An unexpected error occured during Risa/Asir exection: ${err.message}`);
                 createResultWebview(context, textToExecute, outputAccumulator, err.message);
             }
-        });
-        context.subscriptions.push(disposableAsirExecute);
+        }
+    });
+    context.subscriptions.push(disposableAsirExecute);
 }

@@ -2,7 +2,7 @@
   "name": "risa-enhancers",
   "displayName": "Risa_Enhancers",
   "description": "Enhance your computation for Risa/Asir! ",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "",
   "repository": {},
   "bugs": {},
@@ -51,7 +51,7 @@
       },
       {
         "command": "risa_enhancers.executeCode",
-        "title": "Risa/Asir: Send Code to Interactive Session",
+        "title": "Risa/Asir: Execute code",
         "icon": "$(play)"
       },
       {
@@ -61,7 +61,7 @@
       },
       {
         "command": "risa_enhancers.switchExecutionMode",
-        "title": "Risa/Asir: switch Execution Mode"
+        "title": "Risa/Asir: Switch Execution Mode"
       },
       {
         "command": "risa_enhancers.startAsirInteractive",
@@ -70,6 +70,14 @@
       {
         "command": "risa_enhancers.stopAsirInteractive",
         "title": "Risa/Asir: Stop Interactive Session"
+      },
+      {
+        "command": "risa_enhancers.switchSessionMode",
+        "title": "Risa/Asir: Switch Session Mode"
+      },
+      {
+        "command": "risa_enhancers.interruptExecution",
+        "title": "Risa/Asir: Interrupt Execution"
       }
     ],
     "menus": {
@@ -129,6 +137,11 @@
           "type": "number",
           "default": 3000,
           "description": "Adjust the delay (in milliseconds) before sending the load command sessions. Increase this if Risa/Asir fails to load the file."
+        },
+        "risaasirExecutor.useSessionMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "If you want to use permanent Risa/Asir session, please be true."
         }
       }
     },
@@ -181,7 +194,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
-    "@risa-scope/pasirser": "file:../pasirser",
+    "@kanji/openxmclient": "file:../openxmclient",
+    "@kanji/pasirser": "file:../pasirser",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^5.x",
