@@ -7,7 +7,7 @@ export const ASIR_KEYWORDS = [
 export const ASIR_BUILTIN_FUNCTIONS = [
     'access', 'af', 'af_noalg', 'alg', 'algptorat', 'algtodalg', 'algv', 'ann', 'ann0', 'append', 'arfleg', 'args', 'asciitostr', 'asq',
     'bfct', 'bfunction', 'bload', 'bload27', 'bsave', 
-    'call', 'car', 'cdr', 'ceir', 'characteristic_ff', 'clear_canvas', 'close_file', 'bload', 'cola', 'colm', 'colx', 'conj', 'conplot', 'cons', 'cputime', 'cr_gcda', 'ctrl', 'ctrl', 'ctrl', 'currenttime', 'cyclic', 
+    'call', 'car', 'cdr', 'ceir', 'characteristic_ff', 'clear_canvas', 'close_file', 'bload', 'coef', 'cola', 'colm', 'colx', 'conj', 'conplot', 'cons', 'cputime', 'cr_gcda', 'ctrl', 'ctrl', 'ctrl', 'currenttime', 'cyclic', 
     'dabs', 'dacos', 'dalgtoalg', 'dalgtodp', 'dasin', 'datan', 'dceil', 'dcos', 'debug', 'defpoly', 'defpoly_mod2', 'deg', 'delete_history', 'det', 'deval', 'dexp', 'dfloor', 'dgr', 'diff', 'dlog', 'dn', 
     'dpm_dptodpm', 'dpm_dtol', 'dpm_hc', 'dpm_hm', 'dpm_hp', 'dpm_ht', 'dpm_ltod', 'dpm_nf', 'dpm_nf_and_quotient', 'dpm_redble', 'dpm_rest', 'dpm_schreyer_base', 'dpm_schreyer_frame', 'dpm_set_schreyer_level', 'dpm_sp', 'dpm_sp_nf', 
     'dptoalg', 'dp_dehomo', 'dp_dtop', 'dp_etov', 'dp_f4_main', 'dp_f4_mod_main', 'dp_gr_flags', 'dp_gr_f_main', 'dp_gr_f_main', 'dp_gr_mod_main', 'dp_gr_print', 'dp_hc', 'dp_hm', 'dp_homo', 'dp_ht', 'dp_lcm', 'dp_mag', 'dp_mbase', 'dp_mod', 'dp_nf', 'dp_nf_mod', 'dp_ord', 'dp_prim', 'dp_ptod', 'dp_ptozp', 

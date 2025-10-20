@@ -8,7 +8,7 @@ import { TextDecoder } from 'util';
 import { currentAsirTerminal } from './debugCommand';
 import { createResultWebview } from '../utils/webviewUtils'; 
 import { convertWindowsPathToWsl } from '../utils/helper';
-import { AsirSession } from '@kanji/openxmclient';
+import { CwrapSessionManager } from '../utils/cwrapSession';
 
 // 通常実行中のRisa/Asirプロセスを保持する変数
 export let currentNormalExecuteProcess: ChildProcessWithoutNullStreams | null = null;
@@ -23,7 +23,7 @@ export let currentNormalExecuteProcess: ChildProcessWithoutNullStreams | null = 
 export function registerExecuteCommand(
     context: vscode.ExtensionContext,
     asirOutputChannel: vscode.OutputChannel,
-    getAsirSession: () => AsirSession | null
+    getSessionManager: () => CwrapSessionManager
 ) {
     let disposableAsirExecute = vscode.commands.registerCommand('risa_enhancers.executeCode', async () => {
         const editor = vscode.window.activeTextEditor;
@@ -43,7 +43,7 @@ export function registerExecuteCommand(
 
         // 実行モードの取得
         const config = vscode.workspace.getConfiguration('risaasirExecutor', document.uri);
-        const session = getAsirSession();
+        const sessionManager = getSessionManager();
         const useSessionMode = config.get<boolean>('useSessionMode', false);
         // デバッグセクションが起動中ならコードはデバッグターミナルへ
         if (currentAsirTerminal) {
@@ -53,7 +53,7 @@ export function registerExecuteCommand(
             return;
         }
 
-        if (useSessionMode && session) {
+        if (useSessionMode && sessionManager.status === 'active') {
             // 常駐型セッションでの実行
             asirOutputChannel.clear();
             asirOutputChannel.show(true);
@@ -61,7 +61,7 @@ export function registerExecuteCommand(
             asirOutputChannel.appendLine(`> ${textToExecute}`);
 
             try {
-                const result = await session.execute(textToExecute);
+                const result = await sessionManager.execute(textToExecute);
                 asirOutputChannel.appendLine(`[Session RESULT] ${result}`);
                 createResultWebview(context, textToExecute, result, '');
             } catch (error: any) {
@@ -70,6 +70,9 @@ export function registerExecuteCommand(
                 asirOutputChannel.appendLine(`[Session ERROR] ${errorMessage}`);
                 createResultWebview(context, textToExecute, '', errorMessage);
             }
+        } else if (useSessionMode) {
+            vscode.window.showWarningMessage('Asir session is not active. Please start it first or disable session mode.');
+            return;
         } else {
             // 一回ごとの実行
             // 実行中の場合は中断を促す
@@ -191,6 +194,35 @@ export function registerExecuteCommand(
 
                         let finalErrorMessage = errorAccumulator;
                         let isSuccessfulExit = false;
+
+                        // stderr can contain non-error messages like timing info from cputime().
+                        // We'll filter those out from the error message and append them to the standard output.
+                        const errorLines = errorAccumulator.split('\n');
+                        const filteredErrorLines = [];
+                        const timeOutputLines = [];
+                        // Regex for Asir's time output, e.g., "0.001sec(0.001sec)" or "0.001sec"
+                        const timeRegex = /^\s*[\d\.\-\+eE]+sec(\s*\([\d\.\-\+eE]+sec\))?\s*$/;
+
+                        for (const line of errorLines) {
+                            // If the line matches the time output format, treat it as normal output.
+                            if (line.trim().length > 0 && timeRegex.test(line)) {
+                                timeOutputLines.push(line);
+                            } else {
+                                filteredErrorLines.push(line);
+                            }
+                        }
+
+                        // Append the filtered time information to the main output.
+                        if (timeOutputLines.length > 0) {
+                            const timeOutput = timeOutputLines.join('\n');
+                            if (outputAccumulator.length > 0 && !outputAccumulator.endsWith('\n')) {
+                                outputAccumulator += '\n';
+                            }
+                            outputAccumulator += timeOutput;
+                        }
+                        
+                        // Reconstruct the actual error message from the remaining lines.
+                        finalErrorMessage = filteredErrorLines.join('\n').trim();
 
                         const normalQuitMessage =[
                             /(^|\s)Calling the registered quit callbacks\.\.\.done\.(\s|$)/gm,

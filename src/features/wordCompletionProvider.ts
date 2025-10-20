@@ -1,60 +1,46 @@
 import * as vscode from 'vscode';
 import { ASIR_BUILTIN_FUNCTIONS, ASIR_KEYWORDS } from '../data/builtins';
-import { SymbolInfo } from '../features/diagnostics';
+import { getSymbolTableForDocument } from './diagnostics';
+import { Symbol, Scope } from '@kanji/pasirser'; 
 
-export function registerWordCompletionProvider(context:vscode.ExtensionContext, currentDefinedSymbols: Map<string, SymbolInfo>) {
+export function registerWordCompletionProvider(context: vscode.ExtensionContext) {
     const provider = vscode.languages.registerCompletionItemProvider('rr', {
         provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
-            const linePrefix = document.lineAt(position).text.substring(0, position.character);
-            const lastWordMatch = linePrefix.match(/\b([a-zA-Z_][a-zA-Z0-9_]*)$/);
-            const lastWord = lastWordMatch ? lastWordMatch[1] : '';
             const completionItems: vscode.CompletionItem[] = [];
 
-            // 定義済みシンボルからの補完
-            currentDefinedSymbols.forEach((symbol, name) => {
-                if (name.startsWith(lastWord)) {
-                    // ... 補完ロジック ...
+            const symbolTable = getSymbolTableForDocument(document.uri);
+            if (symbolTable) {
+                const genericPosition = { line: position.line, character: position.character };
+                let currentScope: Scope | null = symbolTable.findScopeAt(genericPosition);
+                const visibleSymbols = new Map<string, Symbol>();
+
+                while (currentScope) {
+                    currentScope.symbols.forEach((symbol, name) => {
+                        if (!visibleSymbols.has(name)) { visibleSymbols.set(name, symbol); }
+                    });
+                    currentScope = currentScope.parent;
+                }
+
+                visibleSymbols.forEach((symbol, name) => {
                     const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Variable);
-                    if (symbol.type === 'function') {
+                    if (symbol.type.kind === 'function' || symbol.type.kind === 'overloaded_function') {
                         item.kind = vscode.CompletionItemKind.Function;
-                        item.insertText = new vscode.SnippetString(`${name}(${symbol.definitionRange ? symbol.definitionRange.start.line + 1 : ''})$0`);
-                        item.detail = `Asir関数 ${name}`;
-                        item.documentation = new vscode.MarkdownString(`\`\`\`asir\ndef ${name}(${symbol.definitionRange ? symbol.definitionRange.start.line + 1 : ''}) { ... }\`\`\`\n\n${name} はユーザー定義関数です。`);
-                    } else if (symbol.type === 'variable') {
-                        item.kind = vscode.CompletionItemKind.Variable;
-                        item.detail = `Asir変数 ${name}`;
-                    } else if (symbol.type === 'parameter') {
-                        item.kind = vscode.CompletionItemKind.Property;
-                        item.detail = `関数引数 ${name}`;
-                    } else if (symbol.type === 'module') {
-                        item.kind = vscode.CompletionItemKind.Module;
-                        item.detail = `Asirモジュール ${name}`;
-                    } else if (symbol.type === 'struct') {
+                    } else if (symbol.type.kind === 'struct') {
                         item.kind = vscode.CompletionItemKind.Struct;
-                        item.detail = `Asir構造体 ${name}`;
+                    } else if (symbol.type.kind === 'module') {
+                        item.kind = vscode.CompletionItemKind.Module;
                     }
                     completionItems.push(item);
-                }
-            });
-            
-            // 組み込み関数からの補完
+                });
+            }
+
             ASIR_BUILTIN_FUNCTIONS.forEach(funcName => {
-                if (funcName.startsWith(lastWord)) {
-                    const item = new vscode.CompletionItem(funcName, vscode.CompletionItemKind.Function);
-                    item.detail = `Asir組み込み関数 ${funcName}`;
-                    item.insertText = new vscode.SnippetString(`${funcName}($0)`);
-                    completionItems.push(item);
-                }
+                completionItems.push(new vscode.CompletionItem(funcName, vscode.CompletionItemKind.Function));
             });
-            
-            // キーワードからの補完
             ASIR_KEYWORDS.forEach(keyword => {
-                if (keyword.startsWith(lastWord)) {
-                    const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
-                    item.detail = `Asir文`;
-                    completionItems.push(item);
-                }
+                completionItems.push(new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword));
             });
+
             return completionItems;
         }
     },  

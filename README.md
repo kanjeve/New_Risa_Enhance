@@ -135,3 +135,12 @@ Gemini以外に参考にしたサイトを挙げます。
 - https://nodejs.org/docs/latest/api/
 - http://www.math.sci.kobe-u.ac.jp/OpenXM/Current/doc/asir-contrib/ja/cman-ja.pdf
 - https://yeoman.io/
+
+---
+
+## 今後の参考に
+#### AIを使ったプログラミングの勉強について
+- いま「未経験からエンジニア」を目指す方へ伝えたいこと（URL: https://qiita.com/hirokiii27/items/5fa7bb3c6dd5739d987f）
+- 令和の新しい生活習慣病"AI依存症"にならないためには（URL: https://qiita.com/pilot_fish/items/214f5db00e0bd5d877a4）
+
+

@@ -19,3 +19,280 @@ quad(5.0,3.0,2.0);
 quad(0,4.0,3.0);
 quad(0,0,1);
 
+
+/* --- よく使う関数 --- */
+/* 多項式をモニックにする関数 */
+def be_monic(POLY, PRIME) {
+    setmod_ff(PRIME)$ /* simp_ffを使うために設定する */
+    I = 1$
+    while ( coef(F, deg(F, x)) != 1) {
+        I += 1$
+        F = POLY$
+        F *= I$
+        F = simp_ff(F)$ /* 有限体係数の多項式へと変換 */
+        F = lmptop(F)$  /* 整数係数の多項式へと変換 */
+        /* 多項式の係数が有限体の数（ntypeが6）の場合、特に割り算で支障が出るので、有理数（ntypeが1）に変換する必要があると思われる */
+    }
+    return [F, I]$ /* 先頭係数の逆元も出力する（ように設計したが、今回は使わなかった） */
+}
+/* 有限体上のGCDを計算するための関数 */
+def perfect_gcd(POLY1, POLY2, PRIME) {
+    F = gcd(POLY1, POLY2, PRIME)$ /* 有限体上のGCDを計算する組み込み関数を利用すると、係数のGCDが1にならない */
+    F = be_monic(F, PRIME)$ /* モニックにするため */
+    return F[0]$
+}
+
+/* --- peter_berlekamp関連関数群 --- */
+/* 各項の係数を配列にする関数 */
+def _vect(POLY, DEG) {
+    V = newvect(DEG)$ /* リストの場合要素への代入ができないため、ベクトルを扱う */
+    for ( I = 0; I < DEG; I++) {
+        V[I] = coef(POLY, I)$
+    }
+    return V$
+}
+/* 行列のROW行をベクトルの要素に書き換える関数 */
+def vtom(VECTOR, MATRIX, ROW) {
+    S = length(VECTOR)$
+    M = MATRIX$
+    for ( I = 0; I < S; I++) {
+        M[ROW][I] = VECTOR[I]$
+    }
+    return M$
+}
+/* ピーター・バールカンプ行列を計算する関数 */
+def peter_berlekamp(POLY, PRIME) {
+    /* 教科書のアルゴリズム5-1を参考にした */
+    DEG = deg(POLY,var(POLY))$
+    B = newmat(DEG,DEG)$
+    G0 = 1$ 
+    Bvect0 = _vect(G0, DEG)$ 
+
+    G1 = sremm(x^PRIME, POLY, PRIME)$ /* sremmは有限体上の割り算の剰余を返す組み込み関数であるが、出力される多項式の係数は有理数係数のままである */
+    Bvect = _vect(G1, DEG)$ /* b_1（以下のfor文ではb_i） */
+
+    B = vtom(Bvect0, B, 0)$ /* Bの各行にb_iを入れていく */
+    B = vtom(Bvect, B, 1)$
+    
+    G = G1$
+
+    for ( I = 2; I < DEG; I++) {        
+        G = sremm(G * G1, POLY, PRIME)$
+        Bvect = _vect(G, DEG)$
+        B = vtom(Bvect, B, I)$
+    }
+    return B$
+}
+
+/* --- f_reducing_poly関連関数群 --- */
+/* 単位行列を生成する関数（恐らく標準の組み込み関数にはないため作成した） */
+def identity_matrix(INTEGER) {
+    M = newmat(INTEGER, INTEGER)$
+    for ( I = 0; I < INTEGER; I++) {
+        M[I][I] = 1$
+    }
+    return M$
+}
+/* 対角成分が0にならないように列交換する関数 */
+def ii1(MATRIX, INTEGER) {
+    if (MATRIX[INTEGER][INTEGER] != 0) { return MATRIX$ }
+    for (I = 0; I < size(MATRIX)[0]; I++) {
+        if (MATRIX[INTEGER][I] != 0) {
+            J = 0$
+            while (MATRIX[J][I] == 0) { J += 1$ }
+            if (J == INTEGER) {
+                colx(MATRIX, INTEGER, I)$
+                return MATRIX$
+            }
+        }
+    }
+    return 0$
+}
+/* f-簡約多項式を求める関数 */
+def f_reducing_poly(MATRIX, PRIME) {
+    /* 教科書のアルゴリズム5-2を参考にした */
+    setmod_ff(PRIME)$
+    M = MATRIX$
+    R = length(MATRIX[0])$
+    B = M - identity_matrix(R)$
+
+    for ( I = 0; I < R; I++) { /* 列簡約 */
+        if (B[I] == newvect(R)) { continue$ }
+        C = ii1(B, I)$
+        if (C == 0) { continue$ } else { B = C$ }
+        INV = inv(B[I][I], PRIME)$ /* be_monicもこれ使えそう（なぜかエラーが出るので保留中） */
+        B = colm(B, I, INV)$
+        for ( J = 0; J < R; J++) {
+            if( I == J ) { continue$ }
+            B = cola(B, J, I, -B[I][J])$
+        }
+    }
+    B = identity_matrix(R) - B$
+    B = map(simp_ff, B)$ /* 行列の各要素には四則演算のみが適用されているので、後で各要素を有限体上の代表元に取り換えても問題ない */
+    B = map(lmptop, B)$
+    return B$ /* 出力は行列 */
+}
+/* f_reducing_polyで出力された行列から多項式を生成する関数 */
+def format_f_rp(MATRIX) {
+    R = size(MATRIX)[0]$
+    L0 = []$
+    G = 0$
+    for ( I = 0; I < R; I++) {
+        if ( MATRIX[I] == newvect(R) ) { continue$ }
+        for ( J = 0; J < R; J++) {
+            C = MATRIX[I][J]$
+            G = G + C*x^J$
+        }
+        L0 = cons(G,L0)$
+        G = 0$
+    }
+    L0 = reverse(L0)$
+    return L0$ /* 出力は関数のリスト */
+}
+
+/* --- berlekamp関連関数群 --- */
+/* {gcd(f, g_i-α) | α ∈ 𝔽_q} を計算する関数 */
+def gcd_set(POLY1, POLY2, PRIME) {
+    L1 = []$
+    for ( I = 0; I < PRIME; I++) {
+        F = perfect_gcd(POLY1, POLY2 - I, PRIME)$
+        if ( type(F) == 2 ) {
+            L1 = cons(F,L1)$
+        } else { continue$ }
+    }
+    return L1$
+}
+/* バールカンプアルゴリズムを行う関数 */
+def berlekamp(POLY, PRIME) {
+    /* 教科書のアルゴリズム5-3を参考にした */
+    D = deg(POLY,x)$
+    if(D == 0 || D == 1) { return [POLY]$ } /* 次数が0か1の場合は既約と判定して終了 */
+    setmod_ff(PRIME)$
+    B = peter_berlekamp(POLY, PRIME)$
+    FRP = f_reducing_poly(B, PRIME)$
+    FFRP = format_f_rp(FRP)$
+    K = length(FFRP)$
+    L2 = [POLY]$
+
+    if (K == 1) { return L2$ } else { /* 自明なf-簡約多項式のみの場合は既約と判定して終了 */
+        for ( I = 1; I < K; I++) {
+            Fdash = []$
+            M = length(L2)$
+            
+            for ( J = 0; J < M; J++) {
+                H = 1$
+                F = L2[J]$
+                G = gcd_set(F, FFRP[I], PRIME)$
+                LG = length(G)$
+                for ( N = 0; N < LG; N++) { H = umul_ff(H, G[N])$ } /* 有限体上の高速乗算 */
+                F = lmptop(F)$
+                H = lmptop(H)$ /* 係数の型を有理数に */
+                F = sdivm(F, H, PRIME)$
+                if ( type(F) != 1 && type(F) != 0) { /* Fが多項式の場合はGに追加（type(F)==2の方がスマートかもしれない） */
+                    G = cons(F, G)$
+                } 
+                Fdash = append(Fdash, G)$
+            }
+            if (length(Fdash) == K) {
+                return Fdash$ /* 出力は多項式のリスト */
+            }
+            L2 = Fdash$
+        }
+    }
+}
+
+/* --- squarefree_decomposition関連関数群 --- */
+/* 多項式のq乗根を求める関数（f'=0のときのみ） */
+def poly_root(POLY, PRIME) {
+    /* フェルマーの小定理より係数aのq乗はaと合同 */
+    /* 定理3-42よりfはx^kq(k in Z) の項のみを持つ */
+    /* 補題3-41より各項をq乗でくくれば、fはある多項式のq上になる */
+    /* すなわち、ここでは次数を1/qする関数を定めればよい */
+    F = 0$
+    P = deg(POLY, x)$
+    for ( I = P; I >= 0; I -= PRIME) { /* 多項式は降べきの順になっており、degは先頭係数のみ拾えるので、Iが減るようなforループを行う */
+        C = coef(POLY, I)$
+        D = deg(POLY, x)$
+        F += C*x^(D/PRIME)$
+        POLY -= C*x^D$
+    }
+    return F$
+}
+/* 無平方分解を行う関数 */
+def squarefree_decomposition(POLY, PRIME) {
+    /* 教科書のアルゴリズム3-10を参考にした */
+    setmod_ff(PRIME)$
+    L = []$
+    G = diff(POLY,x)$
+    G = lmptop(simp_ff(G))$
+    S = perfect_gcd(POLY, G, PRIME)$
+    T = sdivm(POLY, S, PRIME)$
+    I = 1$
+    
+    /* 定理3-37は素体F_q上でも成り立つ */
+    /* 故に、与式が無平方なら以降の計算をしないようにできる */
+    if (S == 1) { return [[POLY,1]]$ }
+
+    while (T != 1) {
+        U = perfect_gcd(S, T, PRIME)$
+        F = sdivm(T, U, PRIME)$
+        S = sdivm(S, U, PRIME)$
+        T = U$
+        L = cons([F,I], L)$
+        I += 1$
+        /* もしこのループでSが1になれば、昇順にするためにLを逆にする（else文） */
+        /* ならなければ、次のif文の操作でLに追加するものがあるので逆にしない */
+    }
+    if(S != 1) {
+        S = poly_root(S, PRIME)$
+        LS = squarefree_decomposition(S, PRIME)$ /* ここで再帰があるので、リストの順番に注意する */
+        K = LS[length(LS)-1][1]$
+        while(I <= PRIME*K) {
+            F = 1$
+            L = cons([F,I], L)$
+            I += 1$
+        }
+        L = reverse(L)$
+        L = ltov(L)$
+        for ( J = 1; J <= K; J++) {
+            L[J*PRIME-1] = ltov(L[J*PRIME-1])$
+            L[J*PRIME-1][0] = LS[J-1][0]$
+            L[J*PRIME-1] = vtol(L[J*PRIME-1])$
+        }
+        L = vtol(L)$
+    } else { L = reverse(L)$ }
+    return L$ /* 結果は[[x,1],[x+1,2]]のように二番目の数字の昇順で出る */
+}
+
+/* --- メインの関数 --- */
+def perfect_berlekamp(POLY, PRIME) {
+    F = be_monic(POLY, PRIME)[0]$
+    C = coef(POLY, deg(POLY,x))$
+    RESULT = C == 1 ? [] : [[C,1]]$
+    L = squarefree_decomposition(F, PRIME)$
+    M = length(L)$
+    for (I = 0; I < M; I++) {
+        A = L[I][0]$
+        if (A == 1) { continue$ } else {
+            B = L[I][1]$
+            A = berlekamp(A, PRIME)$
+            N = length(A)$
+            for (J = 0; J < N; J++) {
+                RESULT = cons([A[J], B], RESULT)$
+            }
+        }
+    }
+    return RESULT$ /* 結果は[[x+1,2],[x,1]]のように二番目の数字の降順で出る */
+}
+
+/* ---- テスト例 ----- 
+
+berlekamp(x^7+2*x^5+x^4+2*x^3+x^2+x+1, 5); 
+berlekamp(x^3+5*x^2+8*x+4, 11);
+squarefree_decomposition(x^5+x,2);
+squarefree_decomposition(2*x^5+4*x^4+4*x^3+3*x^2+2*x+4,5);
+squarefree_decomposition(2*x^6+2*x^4+2*x^2,3);
+perfect_berlekamp(x^9-x,3);
+*/
+
+perfect_berlekamp(x^5+2*x^4+x^3+2*x^2+2,3);

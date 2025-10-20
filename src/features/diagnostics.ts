@@ -1,91 +1,51 @@
 import * as vscode from 'vscode';
-import { parseAsirCodeAndBuildAST } from '@kanji/pasirser';
-import { analyzeDocumentWithAST } from './astSemanticAnalyzer';
+import { analyze, SymbolTable, Diagnostic as PasirserDiagnostic, DiagnosticSeverity } from '@kanji/pasirser';
 
-// SymbolInfo の型定義 (他の機能と共有するため、ここでエクスポート)
-export interface SymbolInfo {
-    name: string;
-    type: 'variable' | 'function' | 'parameter' | 'module' | 'struct';
-    definitionRange?: vscode.Range;
-}
 
-// 診断コレクション
 let diagnosticCollection: vscode.DiagnosticCollection;
+const documentSymbolTables = new Map<string, SymbolTable>();
+let debounceTimer: NodeJS.Timeout;
 
-// 定義済みシンボルを保持する Map 
-export let currentDefinedSymbols: Map<string, SymbolInfo> = new Map();
-
-/**
- * Risa/Asir 言語のコード診断機能の初期化。
- *
- * @param context 拡張機能のコンテキスト。
- * @param sharedDefinedSymbols 他の機能と共有する定義済みシンボル Map。
- * @param outputChannel デバッグメッセージなどを出力するための OutputChannel。
- */
-export function registerDiagnostics(context: vscode.ExtensionContext, sharedDefinedSymbols: Map<string, SymbolInfo>, outputChannel: vscode.OutputChannel) {
-    diagnosticCollection = vscode.languages.createDiagnosticCollection('risa-enhancers');
+export function registerDiagnostics(context: vscode.ExtensionContext) {
+    diagnosticCollection = vscode.languages.createDiagnosticCollection('Risa/Asir');
     context.subscriptions.push(diagnosticCollection);
-
-    currentDefinedSymbols = sharedDefinedSymbols;
 
     const triggerDiagnostics = (document: vscode.TextDocument) => {
         if (document.languageId === 'rr') {
-            updateDiagnosticsWithAST(document, diagnosticCollection);
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                updateDiagnostics(document);
+            }, 300);
         }
     };
-
-    vscode.workspace.onDidOpenTextDocument(document => {
-        triggerDiagnostics(document);
-    }, null, context.subscriptions);
-
-    vscode.workspace.onDidChangeTextDocument(event => {
-        triggerDiagnostics(event.document);
-    }, null, context.subscriptions);
-
-    if (vscode.window.activeTextEditor) {
-        triggerDiagnostics(vscode.window.activeTextEditor.document);
-    }
+    if (vscode.window.activeTextEditor) { triggerDiagnostics(vscode.window.activeTextEditor.document); }
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => { if (editor) triggerDiagnostics(editor.document); }));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => triggerDiagnostics(event.document)));
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(doc => diagnosticCollection.delete(doc.uri)));
 }
 
 
-/**
- * ASTとセマンティック解析を用いてコードの診断を行います。
- * @param document 現在のテキストドキュメント。
- * @param diagnosticCollection 診断メッセージを追加するコレクション。
- */
-export function updateDiagnosticsWithAST(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection) {
-    const text = document.getText();
-    let diagnostics: vscode.Diagnostic[] = [];
-
-    // 1. `pasirser`でASTを構築。構文エラー情報も取得する。
-    const { ast, errors } = parseAsirCodeAndBuildAST(text);
-
-    // 構文エラーがある場合、それを診断情報として追加
-    if (errors.length > 0) {
-        for (const error of errors) {
-            const range = new vscode.Range(
-                error.line - 1, // ANTLR4の行は1ベース、VS Codeの行は0ベース
-                error.column,   // ANTLR4の列は0ベース、VS Codeの列も0ベース
-                error.line - 1,
-                error.column + (error.offendingSymbol ? error.offendingSymbol.length : 1)
-            );
-            diagnostics.push(new vscode.Diagnostic(
-                range,
-                `Syntax Error: ${error.message}`,
-                vscode.DiagnosticSeverity.Error
-            ));
-        }
+// pasirserエンジンを呼び出し、エディタの診断機能を更新するメイン関数
+function updateDiagnostics(document: vscode.TextDocument) {
+    const { diagnostics: PasirserDiagnostic, symbolTable } = analyze(document.getText());
+    // pasirserのdiagnosticsをvscodeように変換する
+    const vscodeDiagnostics = PasirserDiagnostic.map(d => {
+        const range = new vscode.Range(d.range.start.line, d.range.start.character, d.range.end.line, d.range.end.character);
+        const severity = d.severity === DiagnosticSeverity.Error
+            ? vscode.DiagnosticSeverity.Error
+            : vscode.DiagnosticSeverity.Warning;
+        return new vscode.Diagnostic(range, d.message, severity);
+    });
+    // 診断結果のセット
+    diagnosticCollection.set(document.uri, vscodeDiagnostics);
+    // シンボルテーブルを保存
+    if (symbolTable) {
+        documentSymbolTables.set(document.uri.toString(), symbolTable);
+    } else {
+        documentSymbolTables.delete(document.uri.toString());
     }
+}
 
-    // ASTが正常に構築された場合のみ、セマンティック解析を実行
-    if (ast) {
-        const semanticDiagnostics = analyzeDocumentWithAST(document);
-        diagnostics.push(...semanticDiagnostics);
-    }
-    
-    diagnosticCollection.set(document.uri, diagnostics);
-    
-    // TODO: `currentDefinedSymbols` の更新ロジックを実装する
-    // `analyzeDocumentWithAST` がシンボルテーブルを返すように修正し、
-    // ここで `currentDefinedSymbols` を更新するのが望ましい。
+export function getSymbolTableForDocument(uri: vscode.Uri): SymbolTable | undefined {
+    return documentSymbolTables.get(uri.toString());
 }
