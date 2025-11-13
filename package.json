@@ -2,8 +2,9 @@
   "name": "risa-enhancers",
   "displayName": "Risa_Enhancers",
   "description": "Enhance your computation for Risa/Asir! ",
+  "license": "MIT",
   "version": "0.5.0",
-  "publisher": "",
+  "publisher": "kanjeve",
   "repository": {},
   "bugs": {},
   "homepage": "",
@@ -147,6 +148,19 @@
           "type": "boolean",
           "default": false,
           "description": "Enable semantic validation (e.g., check for undefined variables, type errors). Requires a restart to take effect."
+        },
+        "risa-enhancers.diagnostics.minimumSeverity": {
+          "type": "string",
+          "default": "Information",
+          "enum": [
+            "Error",
+            "Warning",
+            "Information",
+            "Hint",
+            "None"
+          ],
+          "description": "Specifies the minimum severity level of diagnostics to display in the editor.",
+          "scope": "resource"
         }
       }
     },

@@ -9,5 +9,6 @@
 !syntaxes/**
 !CHANGELOG.md
 !README.md
+!LICENSE.md
 !language-configuration.json
 !bin/**

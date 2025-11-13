@@ -1,8 +1,17 @@
 import * as vscode from 'vscode';
 import { analysisManager } from './documentAnalysisManager';
 import { Diagnostic as PasirserDiagnostic, DiagnosticSeverity } from '@kanji/pasirser';
+import * as C from '../constants';
 
 let diagnosticCollection: vscode.DiagnosticCollection;
+
+const SEVERITY_LEVEL_MAP: { [key: string]: number } = {
+    'Error': 0,
+    'Warning': 1,
+    'Information': 2,
+    'Hint': 3,
+    'None': 4 // 'None' の場合は何も表示しない
+};
 
 /**
  * ファイルの監視を開始し、変更に応じて解析と診断情報の更新を行う司令塔となる関数。
@@ -14,8 +23,8 @@ export function startAnalysis(context: vscode.ExtensionContext) {
 
     // すべての言語サービスに現在の意味解析設定を適用し、診断を再実行する
     const updateAllServicesValidation = () => {
-        const config = vscode.workspace.getConfiguration('risaasir');
-        const semanticValidationEnabled = config.get<boolean>('analysis.enableSemanticValidation', false);
+        const config = vscode.workspace.getConfiguration(C.CONFIG_SECTION_ANALYSIS);
+        const semanticValidationEnabled = config.get<boolean>(C.CONFIG_ENABLE_SEMANTIC_VALIDATION, false);
 
         const services = analysisManager.getAllServices();
         for (const service of services) {
@@ -38,7 +47,7 @@ export function startAnalysis(context: vscode.ExtensionContext) {
     // 設定が変更されたら、すべてのサービスに再適用
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('risaasir.analysis.enableSemanticValidation')) {
+            if (e.affectsConfiguration(`${C.CONFIG_SECTION_ANALYSIS}.${C.CONFIG_ENABLE_SEMANTIC_VALIDATION}`)) {
                 updateAllServicesValidation();
             }
         })
@@ -56,7 +65,7 @@ export function startAnalysis(context: vscode.ExtensionContext) {
             const service = analysisManager.getService(document.uri);
             
             // 設定からインクルードパスなどを取得
-            const config = vscode.workspace.getConfiguration('risaasirExecutor');
+            const config = vscode.workspace.getConfiguration(C.CONFIG_SECTION_EXECUTOR);
             const userIncludePaths = config.get<string[]>('includePaths', []);
             const userLoadPaths = config.get<string[]>('loadPaths', []);
 
@@ -113,30 +122,45 @@ export function startAnalysis(context: vscode.ExtensionContext) {
  * @param pasirserDiagnostics Pasirserから受け取った診断情報の配列
  */
 function updateDiagnostics(uri: vscode.Uri, pasirserDiagnostics: PasirserDiagnostic[]) {
-    const vscodeDiagnostics = pasirserDiagnostics.map(d => {
-        const range = new vscode.Range(d.range.start.line - 1, d.range.start.character, d.range.end.line - 1, d.range.end.character);
-        let severity: vscode.DiagnosticSeverity;
+    const config = vscode.workspace.getConfiguration(C.CONFIG_SECTION_DIAGNOSTICS);
+    const minimumSeveritySetting = config.get<string>(C.CONFIG_DIAGNOSTICS_MINIMUM_SEVERITY, 'Hint');
+    const minimumSeverityValue = SEVERITY_LEVEL_MAP[minimumSeveritySetting] ?? 3; // デフォルトはHint
 
-        switch (d.severity) {
-            case DiagnosticSeverity.Error:
-                severity = vscode.DiagnosticSeverity.Error;
-                break;
-            case DiagnosticSeverity.Warning:
-                severity = vscode.DiagnosticSeverity.Warning;
-                break;
-            case DiagnosticSeverity.Information:
-                severity = vscode.DiagnosticSeverity.Information;
-                break;
-            case DiagnosticSeverity.Hint:
-                severity = vscode.DiagnosticSeverity.Hint;
-                break;
-            default:
-                severity = vscode.DiagnosticSeverity.Warning;
-        }
-        const diagnostic = new vscode.Diagnostic(range, d.message, severity);
-        diagnostic.source = d.source;
-        return diagnostic;
-    });
+    const vscodeDiagnostics = pasirserDiagnostics
+        .filter(d => {
+            // 'None' が設定されている場合は、すべての診断をフィルタリング
+            if (minimumSeverityValue === SEVERITY_LEVEL_MAP['None']) {
+                return false;
+            }
+            // PasirserDiagnostic の severity を数値にマッピング
+            const diagnosticSeverityValue = SEVERITY_LEVEL_MAP[DiagnosticSeverity[d.severity]] ?? 3; // PasirserDiagnosticSeverityを文字列に変換して比較
+
+            return diagnosticSeverityValue <= minimumSeverityValue;
+        })
+        .map(d => {
+            const range = new vscode.Range(d.range.start.line - 1, d.range.start.character, d.range.end.line - 1, d.range.end.character);
+            let severity: vscode.DiagnosticSeverity;
+
+            switch (d.severity) {
+                case DiagnosticSeverity.Error:
+                    severity = vscode.DiagnosticSeverity.Error;
+                    break;
+                case DiagnosticSeverity.Warning:
+                    severity = vscode.DiagnosticSeverity.Warning;
+                    break;
+                case DiagnosticSeverity.Information:
+                    severity = vscode.DiagnosticSeverity.Information;
+                    break;
+                case DiagnosticSeverity.Hint:
+                    severity = vscode.DiagnosticSeverity.Hint;
+                    break;
+                default:
+                    severity = vscode.DiagnosticSeverity.Warning;
+            }
+            const diagnostic = new vscode.Diagnostic(range, d.message, severity);
+            diagnostic.source = d.source;
+            return diagnostic;
+        });
 
     diagnosticCollection.set(uri, vscodeDiagnostics);
 }
