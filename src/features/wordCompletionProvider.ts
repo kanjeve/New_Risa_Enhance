@@ -1,50 +1,42 @@
 import * as vscode from 'vscode';
-import { ASIR_BUILTIN_FUNCTIONS, ASIR_KEYWORDS } from '../data/builtins';
-import { getSymbolTableForDocument } from './diagnostics';
-import { Symbol, Scope } from '@kanji/pasirser'; 
+import { analysisManager } from '../analysis/documentAnalysisManager';
+import { Position, CompletionItem as PasirserCompletionItem, CompletionItemKind as PasirserCompletionItemKind, InsertTextFormat as PasirserInsertTextFormat } from '@kanji/pasirser'; 
 
+// --- ヘルパー関数 ---
+function toVscodeCompletionItemKind(kind: PasirserCompletionItemKind): vscode.CompletionItemKind {
+    return kind as number;
+}
+
+// --- メイン関数 ---
 export function registerWordCompletionProvider(context: vscode.ExtensionContext) {
     const provider = vscode.languages.registerCompletionItemProvider('rr', {
-        provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
-            const completionItems: vscode.CompletionItem[] = [];
+        provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
+            const service = analysisManager.getService(document.uri);
+            if (!service) { return []; }
 
-            const symbolTable = getSymbolTableForDocument(document.uri);
-            if (symbolTable) {
-                const genericPosition = { line: position.line, character: position.character };
-                let currentScope: Scope | null = symbolTable.findScopeAt(genericPosition);
-                const visibleSymbols = new Map<string, Symbol>();
+            const code = document.getText();
+            const pasirserPosition: Position = {
+                line: position.line + 1,
+                character: position.character
+            };
+            const pasirserCompletions = service.getCompletions(code, pasirserPosition);
+            
+            return pasirserCompletions.map((item: PasirserCompletionItem) => {
+                const completionItem = new vscode.CompletionItem(item.label, toVscodeCompletionItemKind(item.kind));
+                completionItem.detail = item.detail;
+                completionItem.documentation = item.documentation ? new vscode.MarkdownString(item.documentation) : undefined;
 
-                while (currentScope) {
-                    currentScope.symbols.forEach((symbol, name) => {
-                        if (!visibleSymbols.has(name)) { visibleSymbols.set(name, symbol); }
-                    });
-                    currentScope = currentScope.parent;
+                if (item.insertText && item.insertTextFormat === PasirserInsertTextFormat.Snippet) {
+                    completionItem.insertText = new vscode.SnippetString(item.insertText);
+                } else {
+                    completionItem.insertText = item.insertText;
                 }
-
-                visibleSymbols.forEach((symbol, name) => {
-                    const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Variable);
-                    if (symbol.type.kind === 'function' || symbol.type.kind === 'overloaded_function') {
-                        item.kind = vscode.CompletionItemKind.Function;
-                    } else if (symbol.type.kind === 'struct') {
-                        item.kind = vscode.CompletionItemKind.Struct;
-                    } else if (symbol.type.kind === 'module') {
-                        item.kind = vscode.CompletionItemKind.Module;
-                    }
-                    completionItems.push(item);
-                });
-            }
-
-            ASIR_BUILTIN_FUNCTIONS.forEach(funcName => {
-                completionItems.push(new vscode.CompletionItem(funcName, vscode.CompletionItemKind.Function));
+                return completionItem;
             });
-            ASIR_KEYWORDS.forEach(keyword => {
-                completionItems.push(new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword));
-            });
-
-            return completionItems;
         }
     },  
-    '(',
-    '.'); // ( と . もトリガーにする。
+    '(', // pari
+    '"'  // ctrl
+    );
     context.subscriptions.push(provider);
 }

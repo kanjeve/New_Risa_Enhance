@@ -7,7 +7,7 @@
         ],
         "sourceMap": true,    // ソースマップを生成 (デバッグに便利)
         "rootDir": "src",     // TypeScriptソースファイルのルートディレクトリ
-        "outDir": "out",      // コンパイル済みJavaScriptファイルの出力先ディレクトリ
+
         "strict": true,       // 厳格な型チェックを有効にする
         "esModuleInterop": true, // CommonJSモジュールをES Modulesとしてインポートできるようにする
         "skipLibCheck": true, // 型定義ファイルの型チェックをスキップする (ビルド速度向上)

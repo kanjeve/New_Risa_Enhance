@@ -36,8 +36,7 @@ const config = {
     rules: [
       {
         test: /\.ts$/,
-        // node_modulesを除外しつつ、ローカルのパーサーパッケージは除外しない（以前の修正を流用）
-        exclude: /node_modules[\\\/](?!pasirser)/, // ★ 'pasirser' はご自身のパッケージ名に！
+        exclude: /node_modules[\\\/](?!pasirser)/, 
         use: [
           {
             loader: 'ts-loader',

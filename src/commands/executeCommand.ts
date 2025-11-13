@@ -85,11 +85,23 @@ export function registerExecuteCommand(
                     });
                 return;
             }
+
+            let workspaceRoot: string | undefined;
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+            if (workspaceFolder) {
+                workspaceRoot = workspaceFolder.uri.fsPath;
+            } else if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            } else {
+                workspaceRoot = path.dirname(document.uri.fsPath);
+            }
+            console.log('DEBUG: workspaceRoot =', workspaceRoot);
     
             let command: string;
             let args: string[] = [];
             let displayMessage: string;
-            let spawnOptions: { shell?: boolean; maxBuffer?: number } = {};
+            let spawnOptions: { shell?: boolean; maxBuffer?: number; cwd?: string; } = { cwd: workspaceRoot};
+            console.log('DEBUG: Initial spawnOptions.cwd =', spawnOptions.cwd);
     
             const currentOsPlatform = process.platform;
     
@@ -118,8 +130,11 @@ export function registerExecuteCommand(
                     const wslDistribution = config.get<string>('wslDistribution', 'Ubuntu');
                     const asirPathLinux = config.get<string>('asirPathLinux', 'asir');
                     const wslTempFilePath = convertWindowsPathToWsl(windowsTempFilePath);
+                    const wslWorkspaceRoot = workspaceRoot ? convertWindowsPathToWsl(workspaceRoot) : '.';
                     command = 'wsl';
-                    const bashCommandString = `bash -c "${asirPathLinux} -quiet -f '${wslTempFilePath}'"`;
+                    const bashCommandString = `bash -c " cd '${wslWorkspaceRoot}' && ${asirPathLinux} -quiet -f '${wslTempFilePath}'"`;
+                    console.log('DEBUG: wslWorkspaceRoot =', wslWorkspaceRoot);
+                    console.log('DEBUG: Final bashCommandString =', bashCommandString);
                     args = ['-d', wslDistribution, bashCommandString];
                     displayMessage = `Executing Risa/Asir WSL (${wslDistribution})...`;
                     spawnOptions.shell = true;
@@ -148,6 +163,9 @@ export function registerExecuteCommand(
             asirOutputChannel.show(true);
             asirOutputChannel.appendLine(`--- ${displayMessage} ---`);
     
+            console.log('DEBUG: Final command =', command);
+            console.log('DEBUG: Final args =', args); 
+            console.log('DEBUG: Final spawnOptions =', spawnOptions);
             try {
                 const asirProcess = spawn(command, args, spawnOptions);
                 currentNormalExecuteProcess = asirProcess;

@@ -2,15 +2,24 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 // 各機能モジュールのインポート
+import { startAnalysis } from './analysis/analysisCoordinator';
+
 import { registerPackageCompletionProvider } from './features/completionProvider';
 import { registerWordCompletionProvider } from './features/wordCompletionProvider';
-import { registerDiagnostics } from './features/diagnostics';
+
 import { registerHoverProvider } from './features/hoverProvider';
+import { registerDefinitionProvider } from './features/definitionProvider';
+import { registerFormattingProvider } from './features/formattingProvider';
+import { registerRenameProvider } from './features/renameProvider';
+import { registerDocumentSymbolProvider } from './features/documentSymbolProvider';
+import { registerSemanticTokensProvider } from './features/semanticTokensProvider';
+
 import { registerExecuteCommand } from './commands/executeCommand';
 import { registerDebugCommands } from './commands/debugCommand';
 import { registerCancelExecutionCommand } from './commands/cancelExecution';
 import { loadPackageData } from './data/packages'; 
 import { CwrapSessionManager, SessionStatus } from './utils/cwrapSession';
+import { analysisManager } from './analysis/documentAnalysisManager';
 
 // --- グローバル変数の定義 ---
 let sessionManager: CwrapSessionManager;
@@ -86,14 +95,20 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // --- 各機能の初期化と登録 ---
 
-    registerDiagnostics(context);
+    startAnalysis(context);
+
     registerPackageCompletionProvider(context); 
     registerWordCompletionProvider(context);
     registerExecuteCommand(context, asirOutputChannel, () => sessionManager);
     registerDebugCommands(context, asirOutputChannel, startSessionStatusBarItem, stopSessionStatusBarItem);
     registerCancelExecutionCommand(context, asirOutputChannel, asirCancelStatusBarItem);
     registerHoverProvider(context);
-    
+    registerDefinitionProvider(context);
+    registerFormattingProvider(context);
+    registerRenameProvider(context);
+    registerDocumentSymbolProvider(context);
+    registerSemanticTokensProvider(context);
+
     // HelloWorld コマンド
     let disposableHelloWorld = vscode.commands.registerCommand('risa-enhancers.helloWorld', () => {
         vscode.window.showInformationMessage('Hello VS Code from Risa Enhancers!');
@@ -210,6 +225,7 @@ async function updateStatusBarMode(context: vscode.ExtensionContext) {
 
 // deactivate 
 export function deactivate() {
+    analysisManager.dispose();
     if (asirModeStatusBarItem) { asirModeStatusBarItem.dispose(); }
     if (asirCancelStatusBarItem) { asirCancelStatusBarItem.dispose(); }
     if (startSessionStatusBarItem) { startSessionStatusBarItem.dispose(); }
