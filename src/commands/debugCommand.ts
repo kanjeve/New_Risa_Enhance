@@ -58,10 +58,10 @@ export function registerDebugCommands(
                     const wslDistribution = config.get<string>(C.CONFIG_WSL_DISTRIBUTION, 'Ubuntu');
                     const asirPathLinux = config.get<string>(C.CONFIG_ASIR_PATH_LINUX, 'asir');
                     const bashCommand = `script -q -c '${asirPathLinux}' /dev/null ; exit`;
-                    commandLine = `& wsl -d ${wslDistribution} -e bash -c "${bashCommand}"`;
+                    commandLine = `wsl -d ${wslDistribution} -e bash -c "${bashCommand}"`;
                 } else {
                     const asirPathWindows = config.get<string>(C.CONFIG_ASIR_PATH_WINDOWS, 'asir.exe');
-                    commandLine = `& "${asirPathWindows}" ; exit`;
+                    commandLine = `"${asirPathWindows}" ; exit`;
                 }
             } else if (currentOsPlatform === 'darwin' || currentOsPlatform === 'linux') {
                 const asirPath = currentOsPlatform === 'darwin' ? config.get<string>(C.CONFIG_ASIR_PATH_MAC, 'asir') : config.get<string>(C.CONFIG_ASIR_PATH_LINUX, 'asir');

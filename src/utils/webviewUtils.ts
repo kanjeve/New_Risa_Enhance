@@ -4,6 +4,20 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 /**
+ * Escapes special characters in a string for use in HTML.
+ * @param unsafe The string to escape.
+ * @returns The escaped HTML string.
+ */
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+/**
  * Risa/Asirの結果を表示するための Webview を作成・表示。
  * @param context 拡張機能コンテキスト
  * @param inputCode 実行したRisa/Asirのコード
@@ -33,9 +47,9 @@ export function createResultWebview(context: vscode.ExtensionContext, inputCode:
  * @returns HTML 文字列
  */
 export function getWebviewContent(inputCode: string, outputResult: string, errorResult: string): string {
-    const escapedInputCode = inputCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const escapedOutputResult = outputResult.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, `&gt;`);
-    const escapedErrorResult = errorResult.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, `&gt;`);
+    const escapedInputCode = escapeHtml(inputCode);
+    const escapedOutputResult = escapeHtml(outputResult);
+    const escapedErrorResult = escapeHtml(errorResult);
 
     let errorSectionHtml = '';
     if (escapedErrorResult.trim().length > 0) {

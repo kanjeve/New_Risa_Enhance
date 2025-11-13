@@ -139,10 +139,10 @@ class ExecutionManager implements vscode.Disposable {
                 options.shell = true;
             } else {
                 const asirPathWindows = config.get<string>(C.CONFIG_ASIR_PATH_WINDOWS);
-                command = `"${asirPathWindows}" -quiet`;
-                args = [];
+                command = asirPathWindows!;
+                args = ['-quiet', '-f', tempFilePath];
                 displayMessage = 'Executing Risa/Asir on Windows natively...';
-                options.shell = true;
+                options.shell = false;
             }
         } else if (currentOsPlatform === 'darwin' || currentOsPlatform === 'linux') {
             const asirPath = currentOsPlatform === 'darwin' ? config.get<string>(C.CONFIG_ASIR_PATH_MAC, 'asir') : config.get<string>(C.CONFIG_ASIR_PATH_LINUX, 'asir');
@@ -168,13 +168,7 @@ class ExecutionManager implements vscode.Disposable {
 
             this.process = spawn(command, args, options);
 
-            if (process.platform === 'win32' && !options.shell) { 
-                const fullCommand = originalText + '\nquit$\n';
-                this.process.stdin.write(fullCommand);
-                this.process.stdin.end();
-            }
-
-            let outputAccumulator = '';
+let outputAccumulator = '';
             let errorAccumulator = '';
 
             this.process.stdout.on('data', (data: Buffer) => {
