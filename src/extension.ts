@@ -11,7 +11,7 @@ import { registerDefinitionProvider } from './features/definitionProvider';
 import { registerFormattingProvider } from './features/formattingProvider';
 import { registerRenameProvider } from './features/renameProvider';
 import { registerDocumentSymbolProvider } from './features/documentSymbolProvider';
-import { registerSemanticTokensProvider } from './features/semanticTokensProvider';
+import { registerSemanticTokensProvider, registerSemanticTokensUpdater } from './features/semanticTokensProvider';
 import { registerDebugCommands } from './commands/debugCommand';
 import { registerSwitchModeCommand, updateStatusBarMode } from './commands/switchModeCommand';
 import { registerExecutionCommands } from './commands/executionManager';
@@ -105,6 +105,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerRenameProvider(context);
     registerDocumentSymbolProvider(context);
     registerSemanticTokensProvider(context);
+    registerSemanticTokensUpdater(context, analysisManager);
 
     // HelloWorld コマンド
     let disposableHelloWorld = vscode.commands.registerCommand(C.COMMAND_HELLO_WORLD, () => {

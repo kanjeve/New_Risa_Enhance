@@ -3,7 +3,7 @@
   "displayName": "Risa_Enhancers",
   "description": "Enhance your computation for Risa/Asir! ",
   "license": "MIT",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "kanjeve",
   "repository": {},
   "bugs": {},
@@ -144,12 +144,30 @@
           "default": false,
           "description": "If you want to use permanent Risa/Asir session, please be true."
         },
+        "risaasirExecutor.systemIncludePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Specify additional system include paths for Asir analysis.",
+          "scope": "resource"
+        },
+        "risaasirExecutor.loadPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Specify additional load paths for Asir analysis.",
+          "scope": "resource"
+        },
         "risaasir.analysis.enableSemanticValidation": {
           "type": "boolean",
           "default": false,
           "description": "Enable semantic validation (e.g., check for undefined variables, type errors). Requires a restart to take effect."
         },
-        "risa-enhancers.diagnostics.minimumSeverity": {
+        "risaasir.diagnostics.minimumSeverity": {
           "type": "string",
           "default": "Information",
           "enum": [
@@ -179,6 +197,28 @@
         ]
       }
     ],
+    "configurationDefaults": {
+      "editor.semanticTokenColorCustomizations": {
+        "enabled": true,
+        "rules": {
+          "struct": "#007ACC",
+          "module": "#2B91AF",
+          "parameter": "#001080",
+          "variable": "#000000",
+          "property": "#A52A2A",
+          "function": "#795E26",
+          "macro": "#d2e004",
+          "keyword": "#0000FF",
+          "comment": "#008000",
+          "string": "#A31515",
+          "number": "#098658",
+          "operator": "#000000",
+          "builtinFunction_keyword": { "foreground": "#0000FF" },
+          "formFunction": { "foreground": "#8A2BE2" },
+          "builtinFunction_default": { "foreground": "#795E26", "fontStyle": "bold" }
+        }
+      }
+    },
     "keybindings": [
       {
         "command": "risa_enhancers.executeCode",

@@ -8,25 +8,27 @@ export function registerHoverProvider(context: vscode.ExtensionContext) {
             const service = analysisManager.getService(document.uri);
             if (!service) { return undefined; }
 
-            const pasirserPosition: Position = {
-                line: position.line + 1,
+            const info = service.getHoverInfo(document.getText(), {
+                line: position.line,
                 character: position.character
-            };
+            });
+            if (!info) return undefined;
 
-            const hoverInfo = service.getHoverInfo(document.getText(), pasirserPosition);
+            const contents = info.contents.map(c => {
+                const md = new vscode.MarkdownString(c);
+                md.isTrusted = true; // 必要に応じて
+                return md;
+            });
 
-            if (hoverInfo && hoverInfo.range) {
-                const contents = new vscode.MarkdownString(hoverInfo.contents);
-
-                const range = new vscode.Range(
-                    hoverInfo.range.start.line -1,
-                    hoverInfo.range.start.character -1,
-                    hoverInfo.range.end.line -1,
-                    hoverInfo.range.end.character
+            let range: vscode.Range | undefined;
+            if (info.range) {
+                range = new vscode.Range(
+                    info.range.start.line, info.range.start.character,
+                    info.range.end.line, info.range.end.character
                 );
-                return new vscode.Hover(contents,range);
             }
-            return undefined;
+            
+            return new vscode.Hover(contents,range);
         }
     }));
 }

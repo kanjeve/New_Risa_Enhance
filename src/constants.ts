@@ -1,7 +1,7 @@
 // Configuration Sections
 export const CONFIG_SECTION_EXECUTOR = 'risaasirExecutor';
 export const CONFIG_SECTION_ANALYSIS = 'risaasir.analysis';
-export const CONFIG_SECTION_DIAGNOSTICS = 'risa-enhancers.diagnostics';
+export const CONFIG_SECTION_DIAGNOSTICS = 'risaasir.diagnostics';
 
 // Configuration Keys
 export const CONFIG_ASIR_PATH_WINDOWS = 'asirPathWindows';
@@ -13,6 +13,8 @@ export const CONFIG_DEBUG_STARTUP_DELAY = 'debugStartupDelay';
 export const CONFIG_USE_SESSION_MODE = 'useSessionMode';
 export const CONFIG_ENABLE_SEMANTIC_VALIDATION = 'enableSemanticValidation';
 export const CONFIG_DIAGNOSTICS_MINIMUM_SEVERITY = 'minimumSeverity';
+export const CONFIG_SYSTEM_INCLUDE_PATHS = 'systemIncludePaths';
+export const CONFIG_LOAD_PATHS = 'loadPaths';
 
 // Command IDs
 export const COMMAND_HELLO_WORLD = 'risa-enhancers.helloWorld';

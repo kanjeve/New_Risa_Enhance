@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { analysisManager } from '../analysis/documentAnalysisManager';
+import { analysisManager, DocumentAnalysisManager } from '../analysis/documentAnalysisManager';
 import { SemanticToken as PasirserSematicToken, SemanticTokenTypes, SemanticTokenModifiers} from '@kanji/pasirser';
+import * as C from '../constants';
 
 
 const tokenTypes = [
@@ -16,6 +17,9 @@ const tokenTypes = [
     'string',
     'number',
     'operator',
+    'builtinFunction_keyword',
+    'formFunction',
+    'builtinFunction_default',
 ];
 const tokenModifiers = [
     'declaration', 'definition', 'readonly', 'static', 'documentation',
@@ -53,4 +57,20 @@ export function registerSemanticTokensProvider(context: vscode.ExtensionContext)
         }
     }, 
     legend ));
+}
+
+export function registerSemanticTokensUpdater(context: vscode.ExtensionContext, analysisManager: DocumentAnalysisManager) {
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document.languageId === 'rr') {
+            const service = analysisManager.getService(event.document.uri);
+            const config = vscode.workspace.getConfiguration(C.CONFIG_SECTION_EXECUTOR);
+            const systemIncludePaths = config.get<string[]>(C.CONFIG_SYSTEM_INCLUDE_PATHS, []);
+            const loadPaths = config.get<string[]>(C.CONFIG_LOAD_PATHS, []);
+
+            if (service) {
+                service.updateDocument(event.document.getText(), systemIncludePaths, loadPaths);
+            }
+            vscode.languages.setTextDocumentLanguage(event.document, 'rr');
+        };
+    }));
 }
