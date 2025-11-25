@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
 import { analysisManager } from './documentAnalysisManager';
-import { Diagnostic as PasirserDiagnostic, DiagnosticSeverity } from '@kanji/pasirser';
+import { Diagnostic as PasirserDiagnostic, DiagnosticSeverity, DiagnosticTag } from '@kanji/pasirser';
 import * as C from '../constants';
 
 let diagnosticCollection: vscode.DiagnosticCollection;
+
+const updateTimers = new Map<string, NodeJS.Timeout>();
+const DEBOUNCE_DELAY_MS = 500; // 0.5s
 
 const SEVERITY_LEVEL_MAP: { [key: string]: number } = {
     'Error': 0,
@@ -60,10 +63,17 @@ export function startAnalysis(context: vscode.ExtensionContext) {
             return;
         }
 
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
+        const uriString = document.uri.toString();
+        if (updateTimers.has(uriString)) {
+            const existingTimer = updateTimers.get(uriString);
+            if (existingTimer) {
+                clearTimeout(existingTimer);
+            }
+        }
+
+        const timer = setTimeout(() => {
             const service = analysisManager.getService(document.uri);
-            
+
             // 設定からインクルードパスなどを取得
             const config = vscode.workspace.getConfiguration(C.CONFIG_SECTION_EXECUTOR);
             const userIncludePaths = config.get<string[]>('includePaths', []);
@@ -76,12 +86,17 @@ export function startAnalysis(context: vscode.ExtensionContext) {
             }
             const finalLoadPaths = workspaceRoot ? [workspaceRoot, ...userLoadPaths] : userLoadPaths;
 
-            // 解析を実行
-            service.updateDocument(document.getText(), userIncludePaths, finalLoadPaths);
-            
-            // 診断結果を画面に表示
+            const systemIncludePaths = config.get<string[]>(C.CONFIG_SYSTEM_INCLUDE_PATHS, []) || [];
+            const loadPaths = config.get<string[]>(C.CONFIG_LOAD_PATHS, []) || [];
+            if (workspaceRoot) finalLoadPaths.unshift(workspaceRoot);
+
+            service.updateDocument(document.getText(), systemIncludePaths, finalLoadPaths);
+
             updateDiagnostics(document.uri, service.getDiagnostics());
-        }, debounceTime);
+            
+            updateTimers.delete(uriString);
+        }, DEBOUNCE_DELAY_MS);
+        updateTimers.set(uriString, timer);
     };
 
     // ---- イベントリスナーの登録 ----
@@ -112,6 +127,12 @@ export function startAnalysis(context: vscode.ExtensionContext) {
         vscode.workspace.onDidCloseTextDocument(doc => {
             analysisManager.removeService(doc.uri);
             diagnosticCollection.delete(doc.uri);
+
+            const uriString = doc.uri.toString();
+            if (updateTimers.has(uriString)) {
+                clearTimeout(updateTimers.get(uriString)!);
+                updateTimers.delete(uriString);
+            }
         })
     );
 }
@@ -159,6 +180,14 @@ function updateDiagnostics(uri: vscode.Uri, pasirserDiagnostics: PasirserDiagnos
             }
             const diagnostic = new vscode.Diagnostic(range, d.message, severity);
             diagnostic.source = d.source;
+
+            if (d.tags) {
+                diagnostic.tags = d.tags.map(tag => {
+                    if (tag === 1) return vscode.DiagnosticTag.Unnecessary;
+                    if (tag === 2) return vscode.DiagnosticTag.Deprecated;
+                    return vscode.DiagnosticTag.Deprecated;
+                })
+            }
             return diagnostic;
         });
 

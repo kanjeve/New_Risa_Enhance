@@ -4,14 +4,14 @@ import * as C from './constants';
 
 // 各機能モジュールのインポート
 import { startAnalysis } from './analysis/analysisCoordinator';
-import { registerPackageCompletionProvider } from './features/completionProvider';
+import { registerPackageCompletionProvider, registerSematicCompletionProvider, registerPathCompletionProvider } from './features/completionProvider';
 import { registerWordCompletionProvider } from './features/wordCompletionProvider';
 import { registerHoverProvider } from './features/hoverProvider';
 import { registerDefinitionProvider } from './features/definitionProvider';
 import { registerFormattingProvider } from './features/formattingProvider';
 import { registerRenameProvider } from './features/renameProvider';
 import { registerDocumentSymbolProvider } from './features/documentSymbolProvider';
-import { registerSemanticTokensProvider, registerSemanticTokensUpdater } from './features/semanticTokensProvider';
+import { registerSemanticTokensProvider } from './features/semanticTokensProvider';
 import { registerDebugCommands } from './commands/debugCommand';
 import { registerSwitchModeCommand, updateStatusBarMode } from './commands/switchModeCommand';
 import { registerExecutionCommands } from './commands/executionManager';
@@ -95,6 +95,8 @@ export async function activate(context: vscode.ExtensionContext) {
     startAnalysis(context);
 
     registerPackageCompletionProvider(context);
+    registerSematicCompletionProvider(context);
+    registerPathCompletionProvider(context);
     registerWordCompletionProvider(context);
     registerExecutionCommands(context, asirOutputChannel, asirCancelStatusBarItem, () => sessionManager);
     registerDebugCommands(context, asirOutputChannel, startSessionStatusBarItem, stopSessionStatusBarItem);
@@ -105,7 +107,6 @@ export async function activate(context: vscode.ExtensionContext) {
     registerRenameProvider(context);
     registerDocumentSymbolProvider(context);
     registerSemanticTokensProvider(context);
-    registerSemanticTokensUpdater(context, analysisManager);
 
     // HelloWorld コマンド
     let disposableHelloWorld = vscode.commands.registerCommand(C.COMMAND_HELLO_WORLD, () => {

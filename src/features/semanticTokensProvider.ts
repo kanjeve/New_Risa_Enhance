@@ -58,19 +58,3 @@ export function registerSemanticTokensProvider(context: vscode.ExtensionContext)
     }, 
     legend ));
 }
-
-export function registerSemanticTokensUpdater(context: vscode.ExtensionContext, analysisManager: DocumentAnalysisManager) {
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.document.languageId === 'rr') {
-            const service = analysisManager.getService(event.document.uri);
-            const config = vscode.workspace.getConfiguration(C.CONFIG_SECTION_EXECUTOR);
-            const systemIncludePaths = config.get<string[]>(C.CONFIG_SYSTEM_INCLUDE_PATHS, []);
-            const loadPaths = config.get<string[]>(C.CONFIG_LOAD_PATHS, []);
-
-            if (service) {
-                service.updateDocument(event.document.getText(), systemIncludePaths, loadPaths);
-            }
-            vscode.languages.setTextDocumentLanguage(event.document, 'rr');
-        };
-    }));
-}
