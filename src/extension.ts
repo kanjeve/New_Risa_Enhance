@@ -97,7 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerPackageCompletionProvider(context);
     registerSematicCompletionProvider(context);
     registerPathCompletionProvider(context);
-    registerWordCompletionProvider(context);
+    // registerWordCompletionProvider(context);
     registerExecutionCommands(context, asirOutputChannel, asirCancelStatusBarItem, () => sessionManager);
     registerDebugCommands(context, asirOutputChannel, startSessionStatusBarItem, stopSessionStatusBarItem);
     registerSwitchModeCommand(context, asirModeStatusBarItem);

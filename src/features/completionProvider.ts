@@ -74,7 +74,7 @@ export function registerSematicCompletionProvider(context: vscode.ExtensionConte
                 return vsItem;
             });
         }
-    }, '.', ':', '>');
+    }, '\"', '(', '.', ':', '>', '#', "/");
     context.subscriptions.push(provider);
 }
 

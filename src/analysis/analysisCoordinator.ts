@@ -13,8 +13,12 @@ const SEVERITY_LEVEL_MAP: { [key: string]: number } = {
     'Warning': 1,
     'Information': 2,
     'Hint': 3,
-    'None': 4 // 'None' の場合は何も表示しない
+    'None': 4
 };
+
+const unusedDecorationType = vscode.window.createTextEditorDecorationType({
+    opacity: '0.5',
+})
 
 /**
  * ファイルの監視を開始し、変更に応じて解析と診断情報の更新を行う司令塔となる関数。
@@ -93,6 +97,7 @@ export function startAnalysis(context: vscode.ExtensionContext) {
             service.updateDocument(document.getText(), systemIncludePaths, finalLoadPaths);
 
             updateDiagnostics(document.uri, service.getDiagnostics());
+            updateUnusedDecorations(document, service.getUnusedLocation());
             
             updateTimers.delete(uriString);
         }, DEBOUNCE_DELAY_MS);
@@ -192,4 +197,19 @@ function updateDiagnostics(uri: vscode.Uri, pasirserDiagnostics: PasirserDiagnos
         });
 
     diagnosticCollection.set(uri, vscodeDiagnostics);
+}
+
+function updateUnusedDecorations(document: vscode.TextDocument, locations: import('@kanji/pasirser').SourceLocation[]) {
+    const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === document.uri.toString());
+    if (editors.length === 0) return;
+
+    const ranges = locations.map(loc => new vscode.Range(
+        loc.start.line -1,
+        loc.start.column,
+        loc.end.line - 1,
+        loc.end.column
+    ));
+    editors.forEach(editor => {
+        editor.setDecorations(unusedDecorationType, ranges);
+    });
 }
