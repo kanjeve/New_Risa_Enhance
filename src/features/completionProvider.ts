@@ -71,6 +71,11 @@ export function registerSematicCompletionProvider(context: vscode.ExtensionConte
                         vsItem.insertText = item.insertText;
                     }
                 }
+                if (item.additionalTextToInsert) {
+                    vsItem.additionalTextEdits = [
+                        vscode.TextEdit.insert(new vscode.Position(0,0), item.additionalTextToInsert)
+                    ];
+                }
                 return vsItem;
             });
         }

@@ -7,6 +7,11 @@ import { analysisManager } from '../analysis/documentAnalysisManager';
 export function registerHoverProvider(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerHoverProvider('rr', {
         async provideHover(document, position, token) {
+            // まずはファイルの情報を表示
+            const fileSummary = await provideFileSummaryhover(document, position);
+            if (fileSummary) {
+                return fileSummary;
+            }
             // pasirser　による意味解析
             const service = analysisManager.getService(document.uri);
             if (service) {
